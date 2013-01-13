@@ -129,7 +129,8 @@
       //#define WMP
       //#define ITG3200
       //#define L3G4200D
-      #define MPU6050       //combo + ACC
+      //#define MPU6050       //combo + ACC
+      #define MPU9150       //new combo + ACC + magnetometer
 
       /* I2C accelerometer */
       //#define NUNCHUCK  // if you want to use the nunckuk connected to a WMP
@@ -148,7 +149,7 @@
       /* I2C magnetometer */
       //#define HMC5843
       //#define HMC5883
-      #define AK8975
+      //#define AK8975
       //#define MAG3110
 
       /* Sonar */ // for visualization purpose currently - no control code behind
@@ -161,9 +162,9 @@
       //#define ADCACC
 
       /* individual sensor orientation */
-      //#define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  =  Y; accADC[PITCH]  = -X; accADC[YAW]  = Z;}
-      //#define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] = -Y; gyroADC[PITCH] =  X; gyroADC[YAW] = Z;}
-      //#define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  = X; magADC[PITCH]  = Y; magADC[YAW]  = Z;}
+      #define ACC_ORIENTATION(X, Y, Z)  {accADC[ROLL]  =  -Y; accADC[PITCH]  = X; accADC[YAW]  = Z;}
+      #define GYRO_ORIENTATION(X, Y, Z) {gyroADC[ROLL] = -X; gyroADC[PITCH] =  -Y; gyroADC[YAW] = -Z;}
+      #define MAG_ORIENTATION(X, Y, Z)  {magADC[ROLL]  = X; magADC[PITCH]  = -Y; magADC[YAW]  = Z;}
 
 
 
@@ -359,7 +360,7 @@
 
     /*********************************    pin Layout     **********************************/
       /* activate this for a better pinlayout if all pins can be used => not possible on ProMicro */
-      //#define A32U4ALLPINS
+      #define A32U4ALLPINS
 
     /**********************************    PWM Setup     **********************************/
       /* activate all 6 hardware PWM outputs Motor 5 = D11 and 6 = D13. 
@@ -441,6 +442,19 @@
       //#define MPU6050_LPF_20HZ
       //#define MPU6050_LPF_10HZ
       //#define MPU6050_LPF_5HZ       // Use this only in extreme cases, rather change motors and/or props
+      
+      /* MPU9150 Low pass filter setting. In case you cannot eliminate all vibrations to the Gyro, you can try
+         to decrease the LPF frequency, only one step per try. As soon as twitching gone, stick with that setting.
+         It will not help on feedback wobbles, so change only when copter is randomly twiching and all dampening and
+         balancing options ran out. Uncomment only one option!
+         IMPORTANT! Change low pass filter setting changes PID behaviour, so retune your PID's after changing LPF.*/
+      //#define MPU9150_LPF_256HZ     // This is the default setting, no need to uncomment, just for reference
+      //#define MPU9150_LPF_188HZ
+      //#define MPU9150_LPF_98HZ
+      //#define MPU9150_LPF_42HZ
+      //#define MPU9150_LPF_20HZ
+      //#define MPU9150_LPF_10HZ
+      //#define MPU9150_LPF_5HZ       // Use this only in extreme cases, rather change motors and/or props
 
     /******                Gyro smoothing    **********************************/
       /* GYRO_SMOOTHING. In case you cannot reduce vibrations _and_ _after_ you have tried the low pass filter options, you

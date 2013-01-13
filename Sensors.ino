@@ -37,6 +37,14 @@
   //#define MPU6050_ADDRESS     0x69 // address pin AD0 high (VCC)
 #endif
 
+#if !defined(MPU9150_ADDRESS)
+  #define MPU9150_ADDRESS     0x68 // address pin AD0 low (GND), default for FreeIMU v0.4 and InvenSense evaluation board
+  //#define MPU9150_ADDRESS     0x69 // address pin AD0 high (VCC)
+  //The MAG acquisition
+  #define MAG_ADDRESS 0x0C
+  #define MAG_DATA_REGISTER 0x03
+#endif
+
 #if !defined(MS561101BA_ADDRESS) 
   #define MS561101BA_ADDRESS 0x77 //CBR=0 0xEE I2C address when pin CSB is connected to LOW (GND)
   //#define MS561101BA_ADDRESS 0x76 //CBR=1 0xEC I2C address when pin CSB is connected to HIGH (VCC)
@@ -100,6 +108,34 @@
 #else
     //Default settings LPF 256Hz/8000Hz sample
     #define MPU6050_DLPF_CFG   0
+#endif
+
+//MPU9150 Gyro LPF setting
+#if defined(MPU9150_LPF_256HZ) || defined(MPU9150_LPF_188HZ) || defined(MPU9150_LPF_98HZ) || defined(MPU9150_LPF_42HZ) || defined(MPU9150_LPF_20HZ) || defined(MPU9150_LPF_10HZ) || defined(MPU9150_LPF_5HZ)
+  #if defined(MPU9150_LPF_256HZ)
+    #define MPU9150_DLPF_CFG   0
+  #endif
+  #if defined(MPU9150_LPF_188HZ)
+    #define MPU9150_DLPF_CFG   1
+  #endif
+  #if defined(MPU9150_LPF_98HZ)
+    #define MPU9150_DLPF_CFG   2
+  #endif
+  #if defined(MPU9150_LPF_42HZ)
+    #define MPU9150_DLPF_CFG   3
+  #endif
+  #if defined(MPU9150_LPF_20HZ)
+    #define MPU9150_DLPF_CFG   4
+  #endif
+  #if defined(MPU9150_LPF_10HZ)
+    #define MPU9150_DLPF_CFG   5
+  #endif
+  #if defined(MPU9150_LPF_5HZ)
+    #define MPU9150_DLPF_CFG   6
+  #endif
+#else
+    //Default settings LPF 256Hz/8000Hz sample
+    #define MPU9150_DLPF_CFG   0
 #endif
 
 #if defined(TINY_GPS) | defined(TINY_GPS_SONAR)
@@ -997,7 +1033,7 @@ void Mag_getADC() {
     magInit = 1;
   }
   
-  #if not defined(MPU6050_I2C_AUX_MASTER)
+  #if not defined(MPU6050_I2C_AUX_MASTER || MPU9150)
     void Device_Mag_getADC() {
       i2c_getSixRawADC(MAG_ADDRESS,MAG_DATA_REGISTER);
       MAG_ORIENTATION( ((rawADC[0]<<8) | rawADC[1]) ,          
@@ -1063,7 +1099,7 @@ void getADC() {
   #endif
 }
 
-#if not defined(MPU6050_I2C_AUX_MASTER)
+#if not defined(MPU6050_I2C_AUX_MASTER || MPU9150)
 void Device_Mag_getADC() {
   getADC();
 }
@@ -1085,7 +1121,6 @@ void Device_Mag_getADC() {
     delay(100);
     magInit = 1;
   }
-
   void Device_Mag_getADC() {
     i2c_getSixRawADC(MAG_ADDRESS,MAG_DATA_REGISTER);
     MAG_ORIENTATION( ((rawADC[1]<<8) | rawADC[0]) ,          
@@ -1174,14 +1209,69 @@ void ACC_getADC () {
     }
   #endif
 #endif
+// ************************************************************************************************************
+// I2C Gyroscope and Accelerometer MPU9150
+// ************************************************************************************************************
+#if defined(MPU9150)
 
-#if defined(WMP) || defined(NUNCHUCK)
+void Gyro_init() {
+  TWBR = ((F_CPU / 400000L) - 16) / 2; // change the I2C clock rate to 400kHz
+  i2c_writeReg(MPU9150_ADDRESS, 0x6B, 0x80);             //PWR_MGMT_1    -- DEVICE_RESET 1
+  delay(5);
+  i2c_writeReg(MPU9150_ADDRESS, 0x6B, 0x03);             //PWR_MGMT_1    -- SLEEP 0; CYCLE 0; TEMP_DIS 0; CLKSEL 3 (PLL with Z Gyro reference)
+  i2c_writeReg(MPU9150_ADDRESS, 0x1A, MPU9150_DLPF_CFG); //CONFIG        -- EXT_SYNC_SET 0 (disable input pin for data sync) ; default DLPF_CFG = 0 => ACC bandwidth = 260Hz  GYRO bandwidth = 256Hz)
+  i2c_writeReg(MPU9150_ADDRESS, 0x1B, 0x18);             //GYRO_CONFIG   -- FS_SEL = 3: Full scale set to 2000 deg/sec
+  // enable I2C bypass for AUX I2C, allways on because we have a magnetometer on board
+  i2c_writeReg(MPU9150_ADDRESS, 0x37, 0x02);           //INT_PIN_CFG   -- INT_LEVEL=0 ; INT_OPEN=0 ; LATCH_INT_EN=0 ; INT_RD_CLEAR=0 ; FSYNC_INT_LEVEL=0 ; FSYNC_INT_EN=0 ; I2C_BYPASS_EN=1 ; CLKOUT_EN=0
+}
+
+void Gyro_getADC () {
+  i2c_getSixRawADC(MPU9150_ADDRESS, 0x43);
+  GYRO_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/4 , // range: +/- 8192; +/- 2000 deg/sec
+	            ((rawADC[2]<<8) | rawADC[3])/4 ,
+	            ((rawADC[4]<<8) | rawADC[5])/4 );
+  GYRO_Common();
+}
+
+void ACC_init () {
+  i2c_writeReg(MPU9150_ADDRESS, 0x1C, 0x10);             
+  acc_1G = 512;
+}
+
+void ACC_getADC () {
+  i2c_getSixRawADC(MPU9150_ADDRESS, 0x3B);
+  ACC_ORIENTATION( ((rawADC[0]<<8) | rawADC[1])/8 ,
+                   ((rawADC[2]<<8) | rawADC[3])/8 ,
+                   ((rawADC[4]<<8) | rawADC[5])/8 );
+  ACC_Common();
+}
+
+
+  
+void Mag_init() {
+    delay(100);
+    i2c_writeReg(MAG_ADDRESS,0x0a,0x01);  //Start the first conversion
+    delay(100);
+    magInit = 1;
+}
+    void Device_Mag_getADC() {
+     i2c_getSixRawADC(MAG_ADDRESS, 0x03);               
+	MAG_ORIENTATION( ((rawADC[1]<<8) | rawADC[0]) ,          
+                     ((rawADC[3]<<8) | rawADC[2]) ,     
+                     ((rawADC[5]<<8) | rawADC[4]) );	
+	//Start another meassurement
+    i2c_writeReg(MAG_ADDRESS,0x0a,0x01);
+}
+#endif
+
+
 // ************************************************************************************************************
 // I2C Wii Motion Plus + optional Nunchuk
 // ************************************************************************************************************
 // I2C adress 1: 0x53 (7bit)
 // I2C adress 2: 0x52 (7bit)
 // ************************************************************************************************************
+#if defined(WMP) || defined(NUNCHUCK)
 #define WMP_ADDRESS_1 0x53
 #define WMP_ADDRESS_2 0x52
 
